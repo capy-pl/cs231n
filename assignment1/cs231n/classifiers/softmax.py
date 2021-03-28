@@ -32,8 +32,35 @@ def softmax_loss_naive(W, X, y, reg):
     # regularization!                                                           #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N = X.shape[0]
+    D = X.shape[1]
+    C = W.shape[1]
 
-    pass
+    scores = X @ W # shape: (N, C), also called logits.
+    scores -= np.max(scores) # to avoid numeric instability (http://cs231n.github.io/linear-classify/#softmax)
+
+    exps = np.exp(scores) # shape: (N, C)
+    sums = np.sum(exps, axis=1, keepdims=True) # shape: (N, 1)
+
+    for i in range(N):
+      loss += (-1) * exps[i, y[i]] + np.sum(exps[i])
+
+    loss /= N
+    loss += 0.5 * reg * np.sum(W * W)
+
+    # based on the chain rule and quotient rule
+    y_true = np.zeros_like(scores)
+    y_true[np.arange(N), y] = 1
+
+    y_pred = exps / sums
+    
+    df = X.T # shape: (D, N), df(W)/dW = d(X @ W)/dW = X.T
+    dL = y_pred - y_true # shape: (N, C), dL(f)/df
+    # the gradient of Loss function with respect to weights
+    dW = df @ dL 
+
+    dW /= N
+    dW += reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -58,7 +85,33 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = X.shape[0]
+    D = X.shape[1]
+    C = W.shape[1]
+
+    scores = X @ W # shape: (N, C), also called logits.
+    scores -= np.max(scores) # to avoid numeric instability (http://cs231n.github.io/linear-classify/#softmax)
+
+    exps = np.exp(scores) # shape: (N, C)
+    sums = np.sum(exps, axis=1, keepdims=True) # shape: (N,)
+
+    # since to finish without loop
+    sum_of_exps = np.sum(scores[np.arange(N), y])
+    sum_of_sums = np.sum(sums) 
+    loss = (-1) * sum_of_exps + sum_of_sums
+
+    # calculate the gradients
+    y_true = np.zeros_like(scores)
+    y_true[np.arange(N), y] = 1
+
+    y_pred = exps / sums
+    
+    df = X.T # shape: (D, N), df(W)/dW = d(X @ W)/dW = X.T
+    dL = y_pred - y_true # shape: (N, C), dL(f)/df
+    dW = df @ dL 
+
+    dW /= N
+    dW += reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
