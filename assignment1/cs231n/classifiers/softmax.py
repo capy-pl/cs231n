@@ -97,7 +97,7 @@ def softmax_loss_vectorized(W, X, y, reg):
 
     # since to finish without loop
     sum_of_exps = np.sum(scores[np.arange(N), y])
-    sum_of_sums = np.sum(sums) 
+    sum_of_sums = np.sum(np.log(sums))
     loss = (-1) * sum_of_exps + sum_of_sums
 
     # calculate the gradients
