@@ -43,7 +43,7 @@ def softmax_loss_naive(W, X, y, reg):
     sums = np.sum(exps, axis=1, keepdims=True) # shape: (N, 1)
 
     for i in range(N):
-      loss += (-1) * exps[i, y[i]] + np.sum(exps[i])
+      loss += (-1) * exps[i, y[i]] + np.sum(np.log(exps[i]))
 
     loss /= N
     loss += 0.5 * reg * np.sum(W * W)
@@ -97,8 +97,11 @@ def softmax_loss_vectorized(W, X, y, reg):
 
     # since to finish without loop
     sum_of_exps = np.sum(scores[np.arange(N), y])
-    sum_of_sums = np.sum(sums) 
+    sum_of_sums = np.sum(np.log(sums))
     loss = (-1) * sum_of_exps + sum_of_sums
+
+    loss /= N
+    loss += 0.5 * reg * np.sum(W * W)
 
     # calculate the gradients
     y_true = np.zeros_like(scores)
