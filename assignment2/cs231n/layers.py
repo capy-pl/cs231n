@@ -25,7 +25,9 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    X = x.reshape((N, -1))
+    out = X @ w + b # (N, M) + (M,)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -57,7 +59,12 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    X = x.reshape(N, -1) # (N, D)
+    dX = dout @ w.T
+    dx = dX.reshape(x.shape)
+    dw = X.T @ dout
+    db = dout.T @ np.ones((N,)) # why?
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -137,7 +144,26 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    # to avoid numeric instability
+    scores = x - np.max(x)
+
+    exps = np.exp(scores) # shape: (N, C)
+    sums = np.sum(exps, axis=1, keepdims=True) # shape: (N,)
+
+    sum_of_exps = np.sum(scores[np.arange(N), y])
+    sum_of_sums = np.sum(np.log(sums))
+    loss = (-1) * sum_of_exps + sum_of_sums
+    loss /= N
+
+    y_true = np.zeros_like(scores)
+    y_true[np.arange(N), y] = 1
+    y_pred = exps / sums
+    
+    dL = y_pred - y_true # shape: (N, C), dL(f)/df
+    dL /= N
+
+    dx = dL
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
