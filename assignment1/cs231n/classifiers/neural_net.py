@@ -188,6 +188,7 @@ class TwoLayerNet(object):
                 num_train, batch_size, replace=True)
             X_batch = X[batch_indexs]
             y_batch = y[batch_indexs]
+            
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
             # Compute loss and gradients using the current minibatch
