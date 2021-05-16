@@ -69,7 +69,11 @@ def sgd_momentum(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    rho = config.get("momentum")
+    alpha = config.get("learning_rate")
+
+    next_v = rho * v - alpha * dw
+    next_w = w + next_v
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -107,7 +111,15 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    learning_rate = config.get("learning_rate")
+    decay_rate = config.get("decay_rate")
+    grad_squared = config.get("cache")
+    epsilon = config.get("epsilon")
+
+    grad_squared = decay_rate * grad_squared + (1 - decay_rate) * (dw**2)
+    next_w = w - learning_rate * dw /(np.sqrt(grad_squared) + epsilon)
+
+    config["cache"] = grad_squared
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -152,7 +164,23 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    beta1 = config.get("beta1")
+    beta2 = config.get("beta2")
+    m = config.get("m")
+    v = config.get("v")
+    t = config.get("t") + 1
+    learning_rate = config.get("learning_rate")
+    epsilon = config.get("epsilon")
+
+    m = beta1 * m + (1 - beta1) * dw
+    v = beta2 * v + (1 - beta2) * (dw**2)
+    first_unbias = m / (1 - beta1 ** t)
+    second_unbias = v / (1 - beta2 ** t)
+    next_w = w - learning_rate * first_unbias / (np.sqrt(second_unbias) + epsilon)
+
+    config["m"] = m
+    config["v"] = v
+    config["t"] = t
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
