@@ -5,7 +5,6 @@ import numpy as np
 from ..layers import *
 from ..layer_utils import *
 
-
 class FullyConnectedNet(object):
     """Class for a multi-layer fully connected neural network.
 
@@ -74,14 +73,18 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        total_dims = [input_dim] + hidden_dims + [num_classes] 
-        for i in range(1, self.num_layers+1):
-            W = "W{}".format(i)
-            b = "b{}".format(i)
-            in_dim = total_dims[i-1]
-            out_dim = total_dims[i]
-            self.params[W] = weight_scale * np.random.randn(in_dim, out_dim)
-            self.params[b] = np.zeros((out_dim,))
+        L = len(hidden_dims)
+        np.random.seed(seed)
+        shape_one = input_dim
+        for i in range(L):
+            self.params['W'+str(i+1)] = np.random.randn(shape_one, hidden_dims[i]) * weight_scale
+            self.params['b'+str(i+1)] = np.zeros(hidden_dims[i])
+            shape_one = hidden_dims[i]
+            if self.normalization != None:
+                self.params['gamma'+str(i+1)] = np.ones(hidden_dims[i])
+                self.params['beta'+str(i+1)] = np.zeros(hidden_dims[i])
+        self.params['W'+str(L+1)] = np.random.randn(shape_one, num_classes) * weight_scale
+        self.params['b'+str(L+1)] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -155,22 +158,48 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        affine_caches = []
-
-        last_W = "W{}".format(self.num_layers)
-        last_b = "b{}".format(self.num_layers)
-
-        out = X
-        for i in range(1, self.num_layers):
-            W = self.params["W{}".format(i)]
-            b = "b{}".format(i)
-            out, cache = affine_forward(out, W, self.params[b])
-            affine_caches.append(cache)
-
-        ## last layer
-        out, cache = affine_forward(out, self.params[last_W], self.params[last_b])
-        affine_caches.append(cache)
-        scores = out
+        if self.normalization == 'batchnorm':
+              bn_relu_cache = {}
+              input_layer = X
+              if self.use_dropout:
+                    for i in range(self.num_layers-1):
+                        bn_relu_out, bn_relu_cache[i] = affine_bn_relu_dropout_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)], self.params['gamma'+str(i+1)], self.params['beta'+str(i+1)], self.bn_params[i], self.dropout_param)
+                        input_layer = bn_relu_out
+              else:
+                    for i in range(self.num_layers-1):
+                        bn_relu_out, bn_relu_cache[i] = affine_bn_relu_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)], self.params['gamma'+str(i+1)], self.params['beta'+str(i+1)], self.bn_params[i])
+                        input_layer = bn_relu_out
+              # 最後一層是沒有relu的，只有全連接，這裏把cache放在relu_cache字典了只是爲了方便，其實這一層不算relu_cache
+              final_layer_out, bn_relu_cache[self.num_layers-1] = affine_forward(bn_relu_out, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
+              scores = final_layer_out
+        elif self.normalization == 'layernorm':
+              ln_relu_cache = {}
+              input_layer = X
+              if self.use_dropout:
+                    for i in range(self.num_layers-1):
+                        ln_relu_out, ln_relu_cache[i] = affine_ln_relu_dropout_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)], self.params['gamma'+str(i+1)], self.params['beta'+str(i+1)], self.bn_params[i], self.dropout_param)
+                        input_layer = ln_relu_out
+              else:
+                    for i in range(self.num_layers-1):
+                        ln_relu_out, ln_relu_cache[i] = affine_ln_relu_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)], self.params['gamma'+str(i+1)], self.params['beta'+str(i+1)], self.bn_params[i])
+                        input_layer = ln_relu_out
+              # 最後一層是沒有relu的，只有全連接，這裏把cache放在relu_cache字典了只是爲了方便，其實這一層不算relu_cache
+              final_layer_out, ln_relu_cache[self.num_layers-1] = affine_forward(ln_relu_out, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
+              scores = final_layer_out
+        else:
+              relu_cache = {}
+              input_layer = X
+              if self.use_dropout:
+                    for i in range(self.num_layers-1):
+                        relu_out, relu_cache[i] = affine_relu_dropout_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)], self.dropout_param)
+                        input_layer = relu_out
+              else: 
+                    for i in range(self.num_layers-1):
+                        relu_out, relu_cache[i] = affine_relu_forward(input_layer, self.params['W'+str(i+1)], self.params['b'+str(i+1)])
+                        input_layer = relu_out
+              # 最後一層是沒有relu的，只有全連接，這裏把cache放在relu_cache字典了只是爲了方便，其實這一層不算relu_cache
+              final_layer_out, relu_cache[self.num_layers-1] = affine_forward(relu_out, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
+              scores = final_layer_out
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -197,25 +226,68 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        # calculate loss
-        loss, dx = softmax_loss(scores, y)
-        loss += 0.5 * self.reg * np.sum(np.square(self.params[last_W]))
-        # calculate grad
-        ## last layer
-        dout, grads[last_W], grads[last_b] = affine_backward(dx, affine_caches.pop())
-        grads[last_W] += self.reg * self.params[last_W] # why?
-
-        for i in range(self.num_layers-1, 0, -1):
-            W = "W{}".format(i)
-            b = "b{}".format(i)
-            dout, grads[W], grads[b] = affine_backward(dout, affine_caches.pop())
-            loss += 0.5 * self.reg * np.sum(np.square(self.params[W]))
-            grads[W] += self.reg * self.params[W]
-
+        loss, dout = softmax_loss(scores, y)
+        for i in range(self.num_layers):
+              loss += 0.5 * self.reg * np.sum(self.params['W'+str(i+1)] * self.params['W'+str(i+1)])
+        
+        if self.normalization == 'batchnorm':
+              dx, final_dw, final_db = affine_backward(dout, bn_relu_cache[self.num_layers-1])
+              grads['W'+str(self.num_layers)] = final_dw + self.reg * self.params['W'+str(self.num_layers)]
+              grads['b'+str(self.num_layers)] = final_db
+              
+              if self.use_dropout:
+                    for i in range(self.num_layers-1, 0, -1): 
+                          dx, dw, db, dgamma, dbeta = affine_bn_relu_dropout_backward(dx, bn_relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
+                          grads['gamma'+str(i)] = dgamma
+                          grads['beta'+str(i)] = dbeta
+              else:
+                    for i in range(self.num_layers-1, 0, -1):
+                          dx, dw, db, dgamma, dbeta = affine_bn_relu_backward(dx, bn_relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
+                          grads['gamma'+str(i)] = dgamma
+                          grads['beta'+str(i)] = dbeta
+        elif self.normalization == 'layernorm':
+              dx, final_dw, final_db = affine_backward(dout, ln_relu_cache[self.num_layers-1])
+              grads['W'+str(self.num_layers)] = final_dw + self.reg * self.params['W'+str(self.num_layers)]
+              grads['b'+str(self.num_layers)] = final_db
+              
+              if self.use_dropout:
+                    for i in range(self.num_layers-1, 0, -1):
+                          dx, dw, db, dgamma, dbeta = affine_ln_relu_dropout_backward(dx, ln_relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
+                          grads['gamma'+str(i)] = dgamma
+                          grads['beta'+str(i)] = dbeta
+              else:
+                    for i in range(self.num_layers-1, 0, -1):
+                          dx, dw, db, dgamma, dbeta = affine_ln_relu_backward(dx, ln_relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
+                          grads['gamma'+str(i)] = dgamma
+                          grads['beta'+str(i)] = dbeta
+        else:      
+              dx, final_dw, final_db = affine_backward(dout, relu_cache[self.num_layers-1])
+              grads['W'+str(self.num_layers)] = final_dw + self.reg * self.params['W'+str(self.num_layers)]
+              grads['b'+str(self.num_layers)] = final_db
+              
+              if self.use_dropout:
+                    for i in range(self.num_layers-1, 0, -1):
+                          dx, dw, db = affine_relu_dropout_backward(dx, relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
+              else:
+                    for i in range(self.num_layers-1, 0, -1):
+                          dx, dw, db = affine_relu_backward(dx, relu_cache[i-1])
+                          grads['W'+str(i)] = dw + self.reg * self.params['W'+str(i)]
+                          grads['b'+str(i)] = db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
+
 
         return loss, grads
