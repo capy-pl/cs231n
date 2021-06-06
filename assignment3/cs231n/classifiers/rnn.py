@@ -148,7 +148,22 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # (1) return initial hidden states: (N, H)
+        feat_out, feat_cache = affine_forward(features, W_proj, b_proj)
+        # (2) return vectors from indices: (N, T, D)
+        word_out, word_cache = word_embedding_forward(captions_in, W_embed)
+        # (3) use RNN to produce hidden state vectors: (N, T, H)
+        rnn_out, rnn_cache = rnn_forward(word_out, feat_out, Wx, Wh, b)
+        # (4) compute scores with fully connected layer
+        score, score_cache = temporal_affine_forward(rnn_out, W_vocab, b_vocab)
+        # (5) compute loss with softmax
+        loss, dout = temporal_softmax_loss(score, captions_out, mask)
+
+        # Backward Propagation
+        dscore, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dout, score_cache)
+        drnn, dh0_rnn, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dscore, rnn_cache)
+        grads['W_embed'] = word_embedding_backward(drnn, word_cache)
+        dx_feature, grads['W_proj'], grads['b_proj'] = affine_backward(dh0_rnn, feat_cache)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +231,14 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h, _ = affine_forward(features, W_proj, b_proj)
+        _start = self._start
+        for n in range(max_length):
+          word_out, _ = word_embedding_forward(_start, W_embed)
+          h, _ = rnn_step_forward(word_out, h, Wx, Wh, b)
+          score, _ = affine_forward(h, W_vocab, b_vocab)
+          _start = np.argmax(score, axis=1)
+          captions[:, n] = _start
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
